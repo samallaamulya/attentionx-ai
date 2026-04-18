@@ -10,7 +10,7 @@ import tempfile
 st.set_page_config(page_title="AttentionX AI", layout="wide")
 
 st.title("🔥 AttentionX AI - Viral Intelligence Engine")
-st.markdown("### Turn long videos into high-engagement viral shorts using AI-style analysis 🚀")
+st.markdown("### Turn long videos into viral short clips using AI-style analysis 🚀")
 
 # =========================
 # VIRAL HOOKS
@@ -24,23 +24,21 @@ hooks = [
 ]
 
 # =========================
-# VIRAL CAPTION GENERATOR
+# CAPTION GENERATOR
 # =========================
 def generate_caption():
-    templates = [
+    return random.choice([
         "You NEED to see this 🔥",
         "This moment is unreal 😳",
         "POV: You didn’t expect this...",
         "Watch till end 👀",
-        "This is going viral for a reason 🚀"
-    ]
-    return random.choice(templates)
+        "This is going viral 🚀"
+    ])
 
 # =========================
-# VIRALITY SCORING ENGINE (AI SIMULATION)
+# VIRALITY SCORE
 # =========================
 def virality_score(duration, randomness):
-    # optimized heuristic model
     score = (10 - abs(duration - 12)) * 6 + randomness * 10
     return round(min(max(score, 0), 100), 2)
 
@@ -55,7 +53,7 @@ def load_video(path):
         return None
 
 # =========================
-# CLIP GENERATION ENGINE
+# CLIP GENERATOR
 # =========================
 def generate_clip(clip, start, duration, output_path):
     try:
@@ -89,11 +87,7 @@ if uploaded_file:
 
         max_duration = int(clip.duration)
 
-        # =========================
-        # AI INSIGHTS PANEL
-        # =========================
         st.subheader("🧠 AI Video Intelligence Report")
-
         st.info(f"""
         Duration: {clip.duration:.2f}s  
         FPS: {clip.fps}  
@@ -103,8 +97,6 @@ if uploaded_file:
         # =========================
         # SETTINGS
         # =========================
-        st.subheader("🎯 AI Clip Settings")
-
         duration = st.slider("Clip Length", 5, 30, 10)
 
         # =========================
@@ -117,18 +109,22 @@ if uploaded_file:
 
             with st.spinner("AI analyzing viral moments..."):
 
-                for i in range(5):  # MORE CLIPS = better evaluation
+                for i in range(5):
 
-                    start = random.randint(0, max_duration - duration)
+                    # SAFE RANDOM START
+                    if max_duration > duration:
+                        start = random.randint(0, max_duration - duration)
+                    else:
+                        start = 0
+
                     randomness = random.randint(1, 10)
-
                     score = virality_score(duration, randomness)
 
                     output_path = os.path.join(temp_dir, f"clip_{i}.mp4")
 
                     result = generate_clip(clip, start, duration, output_path)
 
-                    if result:
+                    if result is not None:
                         results.append({
                             "file": result,
                             "score": score
@@ -140,16 +136,13 @@ if uploaded_file:
             st.success("AI analysis complete!")
 
             # =========================
-            # SORT BY VIRALITY
+            # SHOW RESULTS SAFELY
             # =========================
-            results.sort(key=lambda x: x["score"], reverse=True)
+            if len(results) > 0:
 
-            best = results[0] if results else None
+                results.sort(key=lambda x: x["score"], reverse=True)
+                best = results[0]
 
-            # =========================
-            # BEST CLIP HIGHLIGHT
-            # =========================
-            if best:
                 st.subheader("🏆 Best Viral Clip (AI Selected)")
                 st.video(best["file"])
                 st.metric("Virality Score", best["score"])
@@ -165,36 +158,38 @@ if uploaded_file:
                         mime="video/mp4"
                     )
 
-            # =========================
-            # ALL CLIPS
-            # =========================
-            st.subheader("🎬 All Generated Clips Ranked")
+                st.subheader("🎬 All Generated Clips")
 
-            for r in results:
-                st.video(r["file"])
-                st.write(f"⭐ Virality Score: {r['score']}")
+                for r in results:
+                    st.video(r["file"])
+                    st.write(f"⭐ Score: {r['score']}")
 
-                with open(r["file"], "rb") as f:
-                    st.download_button(
-                        "Download",
-                        f,
-                        file_name=os.path.basename(r["file"]),
-                        mime="video/mp4"
-                    )
+                    with open(r["file"], "rb") as f:
+                        st.download_button(
+                            "Download",
+                            f,
+                            file_name=os.path.basename(r["file"]),
+                            mime="video/mp4"
+                        )
 
-            # =========================
-            # FINAL DASHBOARD
-            # =========================
-            avg_score = sum(r["score"] for r in results) / len(results)
+                # =========================
+                # ANALYTICS SAFE
+                # =========================
+                avg_score = sum(r["score"] for r in results) / len(results)
 
-            st.subheader("📊 AI Analytics Dashboard")
+                st.subheader("📊 AI Analytics Dashboard")
+                st.success(f"Average Virality Score: {round(avg_score, 2)}")
 
-            st.success(f"Average Virality Score: {round(avg_score, 2)}")
+                if avg_score > 70:
+                    st.balloons()
+                    st.info("🔥 HIGH VIRAL POTENTIAL VIDEO DETECTED")
+                else:
+                    st.warning("⚠ Moderate engagement potential")
 
-            if avg_score > 70:
-                st.balloons()
-                st.info("🔥 HIGH VIRAL POTENTIAL VIDEO DETECTED")
             else:
-                st.warning("⚠ Moderate engagement potential")
+                st.error("❌ No clips generated. Try another video or lower duration.")
 
-        clip.close()
+        try:
+            clip.close()
+        except:
+            pass
