@@ -1,4 +1,10 @@
 import streamlit as st
+from PIL import Image
+
+# FIX FOR ANTIALIAS ISSUE
+if not hasattr(Image, "ANTIALIAS"):
+    Image.ANTIALIAS = Image.LANCZOS
+
 from moviepy.editor import VideoFileClip
 import random
 import os
@@ -10,10 +16,10 @@ import tempfile
 st.set_page_config(page_title="AttentionX AI", layout="wide")
 
 st.title("🔥 AttentionX AI - Viral Intelligence Engine")
-st.markdown("### Turn long videos into viral short clips using AI-style analysis 🚀")
+st.markdown("### Turn long videos into high-engagement viral shorts 🚀")
 
 # =========================
-# VIRAL HOOKS
+# DATA
 # =========================
 hooks = [
     "This changed everything 😳",
@@ -23,27 +29,29 @@ hooks = [
     "You won’t believe this 👀"
 ]
 
+captions = [
+    "You NEED to see this 🔥",
+    "This moment is unreal 😳",
+    "POV: You didn’t expect this...",
+    "Watch till end 👀",
+    "This is going viral 🚀"
+]
+
 # =========================
-# CAPTION GENERATOR
+# STATE CONTROL (IMPORTANT FIX)
 # =========================
-def generate_caption():
-    return random.choice([
-        "You NEED to see this 🔥",
-        "This moment is unreal 😳",
-        "POV: You didn’t expect this...",
-        "Watch till end 👀",
-        "This is going viral 🚀"
-    ])
+if "generated" not in st.session_state:
+    st.session_state.generated = False
 
 # =========================
 # VIRALITY SCORE
 # =========================
 def virality_score(duration, randomness):
     score = (10 - abs(duration - 12)) * 6 + randomness * 10
-    return round(min(max(score, 0), 100), 2)
+    return round(max(0, min(score, 100)), 2)
 
 # =========================
-# SAFE VIDEO LOADER
+# LOAD VIDEO
 # =========================
 def load_video(path):
     try:
@@ -53,7 +61,7 @@ def load_video(path):
         return None
 
 # =========================
-# CLIP GENERATOR
+# GENERATE CLIP
 # =========================
 def generate_clip(clip, start, duration, output_path):
     try:
@@ -94,24 +102,22 @@ if uploaded_file:
         Resolution: {clip.size}  
         """)
 
-        # =========================
-        # SETTINGS
-        # =========================
-        duration = st.slider("Clip Length", 5, 30, 10)
+        duration = st.slider("Clip Length (seconds)", 5, 30, 10)
 
-        # =========================
-        # GENERATE
-        # =========================
-        if st.button("🚀 Generate Viral Intelligence Clips"):
+        # RESET BUTTON (IMPORTANT)
+        if st.button("🔄 Reset"):
+            st.session_state.generated = False
+
+        # GENERATE BUTTON (ONLY ONCE)
+        if st.button("🚀 Generate Viral Clips") and not st.session_state.generated:
 
             progress = st.progress(0)
             results = []
 
             with st.spinner("AI analyzing viral moments..."):
 
-                for i in range(5):
+                for i in range(3):  # reduced for clean UI
 
-                    # SAFE RANDOM START
                     if max_duration > duration:
                         start = random.randint(0, max_duration - duration)
                     else:
@@ -130,64 +136,50 @@ if uploaded_file:
                             "score": score
                         })
 
-                    progress.progress((i + 1) * 20)
+                    progress.progress((i + 1) * 33)
 
             progress.progress(100)
             st.success("AI analysis complete!")
 
-            # =========================
-            # SHOW RESULTS SAFELY
-            # =========================
+            # STORE RESULTS IN SESSION
+            st.session_state.results = results
+            st.session_state.generated = True
+
+        # =========================
+        # SHOW RESULTS ONLY IF GENERATED
+        # =========================
+        if st.session_state.generated:
+
+            results = st.session_state.results
+
             if len(results) > 0:
 
                 results.sort(key=lambda x: x["score"], reverse=True)
                 best = results[0]
 
-                st.subheader("🏆 Best Viral Clip (AI Selected)")
+                st.subheader("🏆 Best Viral Clip")
                 st.video(best["file"])
                 st.metric("Virality Score", best["score"])
 
-                st.success("🔥 Suggested Caption: " + generate_caption())
+                st.success("🔥 Caption: " + random.choice(captions))
                 st.info("Hook: " + random.choice(hooks))
 
-                with open(best["file"], "rb") as f:
-                    st.download_button(
-                        "⬇ Download Best Clip",
-                        f,
-                        file_name="best_clip.mp4",
-                        mime="video/mp4"
-                    )
-
-                st.subheader("🎬 All Generated Clips")
+                st.subheader("🎬 All Clips")
 
                 for r in results:
                     st.video(r["file"])
                     st.write(f"⭐ Score: {r['score']}")
 
-                    with open(r["file"], "rb") as f:
-                        st.download_button(
-                            "Download",
-                            f,
-                            file_name=os.path.basename(r["file"]),
-                            mime="video/mp4"
-                        )
-
-                # =========================
-                # ANALYTICS SAFE
-                # =========================
                 avg_score = sum(r["score"] for r in results) / len(results)
 
                 st.subheader("📊 AI Analytics Dashboard")
-                st.success(f"Average Virality Score: {round(avg_score, 2)}")
+                st.success(f"Average Score: {round(avg_score, 2)}")
 
-                if avg_score > 70:
+                if avg_score >= 70:
                     st.balloons()
-                    st.info("🔥 HIGH VIRAL POTENTIAL VIDEO DETECTED")
+                    st.info("🔥 HIGH VIRAL POTENTIAL")
                 else:
-                    st.warning("⚠ Moderate engagement potential")
-
-            else:
-                st.error("❌ No clips generated. Try another video or lower duration.")
+                    st.warning("⚠ Medium engagement")
 
         try:
             clip.close()
